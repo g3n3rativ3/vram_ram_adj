@@ -1,0 +1,10 @@
+{
+    "name": "VRAM / RAM Adjuster",
+    "author": "",
+    "version": "1.0.0",
+    "description": "Adjust the Gpu Vram and System Ram - Override the Memory Profiles",
+    "url": "",
+    "date": "",
+    "wan2gp_version": "",
+    "uninstallable": true
+}
