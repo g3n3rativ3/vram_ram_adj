@@ -19,7 +19,7 @@ The plugin folder must be named `vram_ram_adj`.
 - Title **VRAM / RAM Adjuster** + subtitle.
 - **Activate the plugin** — OFF at every launch. When ON, applies the manual
   values below; when turned OFF again it restores WanGP's original settings.
-- **GPU VRAM - Gb** slider — 6 → 32, step 0.5, default 8.
+- **GPU VRAM - Gb** slider — 1 → 32, step 0.5, default 8.
 - **SYSTEM RAM - Gb** slider — 16 → 128, step 2, default 32.
 - **Do not use Reserved Memory** — OFF at every launch. When ON, RAM is used
   like Memory Profile **3+** (no reserved / shared memory).
