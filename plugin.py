@@ -70,7 +70,7 @@ PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 SAVES_DIR = os.path.join(PLUGIN_DIR, "Saves")
 
 # Slider ranges / defaults (as specified) -------------------------------------
-VRAM_MIN, VRAM_MAX, VRAM_STEP, VRAM_DEFAULT = 6.0, 32.0, 0.5, 8.0
+VRAM_MIN, VRAM_MAX, VRAM_STEP, VRAM_DEFAULT = 1.0, 32.0, 0.5, 8.0
 RAM_MIN, RAM_MAX, RAM_STEP, RAM_DEFAULT = 16, 128, 2, 32
 
 
