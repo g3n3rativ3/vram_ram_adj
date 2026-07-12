@@ -180,8 +180,14 @@ class VramRamAdjusterPlugin(WAN2GPPlugin):
         gr.Markdown(
             "<div style='font-size:13px;color:#9aa0a6;margin-top:2px'>"
             "ℹ️ <b>Note about the VRAM setting:</b> Allow for a margin of at least 2 GB below "
-            "your GPU's VRAM capacity —or even more if you are using LoRAs."
-            "Monitor VRAM usage and adjust as necessary; avoid maxing out your VRAM"
+            "your GPU's VRAM capacity —or even more if you are using LoRAs. "
+            "Monitor VRAM usage and adjust as necessary; avoid maxing out your VRAM. "
+            "<br>This value sets the same lever as WanGP's built-in "
+            "<i>Configuration → Performance → VRAM (MB) for Preloaded Models</i> "
+            "(<code>preload_in_VRAM</code>). Like the built-in slider, it only "
+            "takes effect on <b>Memory Profiles 2, 4 and 5</b>: on profile 1 "
+            "(everything already in VRAM) and profile 3 (budget forced to 70%) "
+            "WanGP ignores this value by design."
             "</div>"
 
         )
@@ -204,8 +210,9 @@ class VramRamAdjusterPlugin(WAN2GPPlugin):
             "depends on the selected <b>Memory Profile</b>. On profiles "
             "<b>3</b> and <b>4</b>, WanGP pins the main model to reserved RAM "
             "by design, so the RAM value (and \"Do not use Reserved Memory\") "
-            "has little effect there. The <b>VRAM setting above always works</b>, "
-            "whatever the profile."
+            "has little effect there. The <b>VRAM setting above applies on "
+            "profiles 2, 4 and 5</b> (it is ignored on profiles 1 and 3, exactly "
+            "like WanGP's built-in slider)."
             "</div>"
         )
 
@@ -640,11 +647,34 @@ class VramRamAdjusterPlugin(WAN2GPPlugin):
 
         if isinstance(server_config, dict):
             # >>> ADJUST HERE <<<  VRAM budget lever for your WanGP build.
+            # This is the EXACT same key WanGP's built-in slider
+            # (Configuration -> Performance -> "VRAM (MB) for Preloaded
+            # Models") writes to, and it is consumed the same way in
+            # wgp.init_pipe():  preload = server_config.get("preload_in_VRAM", 0)
             server_config["preload_in_VRAM"] = vram_preload_mb
             ok_vram = True
         else:
             print("[VRAM/RAM Adjuster] WARNING: server_config unavailable; "
                   "cannot set preload_in_VRAM.")
+
+        # --- honesty check #1: CLI --preload overrides preload_in_VRAM --------
+        # In wgp.init_pipe():   preload = int(args.preload)
+        #                       if preload == 0: preload = server_config[...]
+        # So a non-zero --preload on the command line silently wins over BOTH
+        # our value and the built-in slider. Detect it and warn plainly.
+        cli_preload = 0
+        try:
+            cli_preload = int(getattr(args, "preload", 0) or 0)
+        except Exception:
+            cli_preload = 0
+        cli_note = ""
+        if cli_preload != 0:
+            cli_note = (
+                f" ⚠️ Note: WanGP was launched with '--preload {cli_preload}', "
+                f"which takes priority over this VRAM value (both here and in "
+                f"WanGP's built-in slider). Remove '--preload' from the launch "
+                f"command for the slider to take effect."
+            )
 
         if args is not None:
             try:
@@ -676,9 +706,27 @@ class VramRamAdjusterPlugin(WAN2GPPlugin):
                 reserved_note = (
                     f" ⚠️ Note: on Memory Profile {active_profile:g}, WanGP "
                     f"pins the transformer to reserved RAM by design, so "
-                    f"'Do not use Reserved Memory' has little effect here. "
-                    f"The VRAM setting still applies fully."
+                    f"'Do not use Reserved Memory' has little effect here."
                 )
+
+        # --- honesty check #2: VRAM value ignored on profiles 1 and 3 --------
+        # In wgp.init_pipe(), the preload budget is only applied for mmgp
+        # profiles 2, 4 and 5. Profile 1 keeps everything in VRAM (no budget
+        # branch) and profile 3 forces the budget to "70%" — in both cases the
+        # preload_in_VRAM value is ignored, exactly like the built-in slider.
+        vram_profile_note = ""
+        active_profile = self._detect_active_profile(server_config)
+        try:
+            prof_int = int(active_profile) if active_profile is not None else None
+        except Exception:
+            prof_int = None
+        if prof_int in (1, 3):
+            vram_profile_note = (
+                f" ⚠️ Note: on Memory Profile {prof_int}, WanGP ignores the VRAM "
+                f"preload value by design (profile 1 keeps the model fully in "
+                f"VRAM; profile 3 forces a 70% budget). Use profile 2, 4 or 5 "
+                f"for this VRAM slider to take effect."
+            )
 
         prefix = "✅ Override active" if (ok_vram and ok_ram) else "⚠️ Partial override"
         return (
@@ -686,6 +734,8 @@ class VramRamAdjusterPlugin(WAN2GPPlugin):
             f"({self._vram_gb:g} GB) · reserved RAM: {ram_desc}. "
             f"Applies on the next model load (start a generation, or unload/"
             f"reload the model)."
+            + cli_note
+            + vram_profile_note
             + reserved_note
         )
 
